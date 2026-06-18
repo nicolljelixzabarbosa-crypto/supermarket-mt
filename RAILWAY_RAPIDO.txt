@@ -1,0 +1,90 @@
+# 🚀 RAILWAY - RESUMEN RÁPIDO (5 MINUTOS)
+
+## LO QUE NECESITAS
+
+1. Cuenta GitHub (gratis)
+2. Cuenta Railway (gratis)
+3. Git instalado
+
+---
+
+## PASO 1️⃣: GITHUB
+
+```bash
+# 1. Ve a https://github.com → Sign up
+# 2. Verifica tu email
+# 3. Crea nuevo repositorio llamado "supermarket-mt"
+# 4. Selecciona "Public"
+```
+
+---
+
+## PASO 2️⃣: SUBIR CÓDIGO
+
+En PowerShell en tu carpeta del proyecto:
+
+```bash
+cd C:\Users\chomi\OneDrive\Practica\supermarket-mt
+
+git config --global user.name "Tu Nombre"
+git config --global user.email "tu-email@gmail.com"
+
+git init
+git add .
+git commit -m "Supermarket MT"
+git branch -M main
+git remote add origin https://github.com/TU-USERNAME/supermarket-mt.git
+git push -u origin main
+```
+
+*(Reemplaza `TU-USERNAME` con tu usuario GitHub)*
+
+---
+
+## PASO 3️⃣: RAILWAY
+
+```bash
+# 1. Ve a https://railway.app
+# 2. Clic en "Start Project"
+# 3. Selecciona "Deploy from GitHub"
+# 4. Autoriza Railway
+# 5. Selecciona "supermarket-mt"
+# 6. ¡LISTO! Railway despliega automáticamente
+```
+
+---
+
+## PASO 4️⃣: OBTENER URL
+
+En Railway:
+- Ve a "Settings"
+- Busca "Domains"
+- Copia tu URL (algo como: `supermarket-mt-production.up.railway.app`)
+
+---
+
+## PASO 5️⃣: TABLET
+
+En la tablet, abre navegador y accede a:
+
+```
+https://TU-URL-DE-RAILWAY.up.railway.app
+```
+
+¡**Funciona!** 🎉
+
+---
+
+## ✅ CHECKLIST
+
+- [ ] Cuenta GitHub creada
+- [ ] Repositorio creado
+- [ ] Código subido (`git push`)
+- [ ] Cuenta Railway creada
+- [ ] Proyecto conectado
+- [ ] Railway muestra "Build Successful"
+- [ ] Tablet accede perfectamente
+
+---
+
+**¡Sin portátil prendido, funcionando 24/7!** ☁️

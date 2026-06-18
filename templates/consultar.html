@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Consultar Precio - Supermarket MT{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <section class="search-section">
+        <h2>Consultar Precio de Producto</h2>
+        <p class="subtitle">Escanea el código de barras o busca por nombre</p>
+
+        <div class="search-container">
+            <input 
+                type="text" 
+                id="searchInput" 
+                class="search-input" 
+                placeholder="Escanea código o escribe el nombre..."
+                autofocus
+            >
+            <button id="searchBtn" class="search-btn">🔍 Buscar</button>
+        </div>
+    </section>
+
+    <section class="results-section" id="resultsSection" style="display: none;">
+        <div id="resultsList" class="results-list">
+            <!-- Los resultados se cargarán aquí -->
+        </div>
+    </section>
+
+    <section class="info-section" id="infoSection">
+        <div class="info-card">
+            <h3>📱 Cómo usar</h3>
+            <ul>
+                <li>Escanea el código de barras con la cámara o un lector</li>
+                <li>O busca el producto por nombre</li>
+                <li>El sistema detectará automáticamente la entrada</li>
+                <li>Verás el precio y detalles del producto</li>
+            </ul>
+        </div>
+    </section>
+
+    <div id="errorMessage" class="error-message" style="display: none;"></div>
+</div>
+
+<script>
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const resultsSection = document.getElementById('resultsSection');
+    const resultsList = document.getElementById('resultsList');
+    const infoSection = document.getElementById('infoSection');
+    const errorMessage = document.getElementById('errorMessage');
+    let debounceTimer;
+
+    // Buscar cuando se presiona Enter
+    searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            performSearch();
+        }
+    });
+
+    // Buscar cuando se hace click en el botón
+    searchBtn.addEventListener('click', performSearch);
+
+    // Búsqueda automática mientras escribe (con delay)
+    searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        if (searchInput.value.length > 2) {
+            debounceTimer = setTimeout(performSearch, 500);
+        }
+    });
+
+    function performSearch() {
+        const query = searchInput.value.trim();
+        
+        if (!query) {
+            showError('Por favor ingresa un código o nombre');
+            return;
+        }
+
+        fetch('/api/search', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ query: query })
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            } else if (response.status === 404) {
+                displayNoResults();
+                throw new Error('Producto no encontrado');
+            }
+            throw new Error('Error en la búsqueda');
+        })
+        .then(data => {
+            if (data.found) {
+                displayResults(data.products);
+            }
+        })
+        .catch(error => {
+            showError(error.message);
+        });
+    }
+
+    function displayResults(products) {
+        infoSection.style.display = 'none';
+        resultsSection.style.display = 'block';
+        errorMessage.style.display = 'none';
+        
+        resultsList.innerHTML = '';
+        
+        products.forEach(product => {
+            const resultCard = document.createElement('div');
+            resultCard.className = 'result-card';
+            resultCard.innerHTML = `
+                <div class="product-icon">🏷️</div>
+                <div class="product-info">
+                    <h3>${escapeHtml(product.name)}</h3>
+                    <p class="product-barcode">Código: ${escapeHtml(product.barcode)}</p>
+                    <p class="product-category">${escapeHtml(product.category || 'Sin categoría')}</p>
+                </div>
+                <div class="product-price">
+                    <span class="price-label">Precio</span>
+                    <span class="price-value">$${parseFloat(product.price).toFixed(2)}</span>
+                </div>
+            `;
+            resultsList.appendChild(resultCard);
+        });
+    }
+
+    function displayNoResults() {
+        infoSection.style.display = 'none';
+        resultsSection.style.display = 'block';
+        errorMessage.style.display = 'none';
+        
+        resultsList.innerHTML = `
+            <div class="no-results">
+                <p>😢 Producto no encontrado</p>
+                <small>Verifica el código o intenta con otro nombre</small>
+            </div>
+        `;
+    }
+
+    function showError(message) {
+        resultsSection.style.display = 'none';
+        infoSection.style.display = 'block';
+        errorMessage.textContent = message;
+        errorMessage.style.display = 'block';
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Autofocus inicial
+    searchInput.focus();
+</script>
+{% endblock %}

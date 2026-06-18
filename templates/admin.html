@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block title %}Panel Admin - Supermarket MT{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="admin-header">
+        <h2>⚙️ Panel de Administración</h2>
+        <a href="{{ url_for('logout') }}" class="logout-btn">🚪 Cerrar Sesión</a>
+    </div>
+
+    <div class="admin-content">
+        <!-- Sección de agregar producto -->
+        <section class="admin-section">
+            <h3>➕ Agregar Nuevo Producto</h3>
+            <form id="addProductForm" class="product-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="barcode">Código de Barras: 
+                            <span class="scan-hint">🔴 Escanea con cámara o lector</span>
+                        </label>
+                        <div class="barcode-input-group">
+                            <input 
+                                type="text" 
+                                id="barcode" 
+                                name="barcode" 
+                                placeholder="Escanea aquí..." 
+                                class="barcode-scanner-input"
+                                required
+                                autofocus
+                            >
+                            <button type="button" id="cameraBtn" class="btn-camera" title="Abrir cámara para escanear">
+                                📷 Cámara
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="name">Nombre del Producto:</label>
+                        <input type="text" id="name" name="name" placeholder="Ej: Leche Entera" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="price">Precio ($):</label>
+                        <input type="number" id="price" name="price" placeholder="0.00" step="0.01" min="0" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary">Agregar Producto</button>
+            </form>
+            <div id="addMessage" class="message" style="display: none;"></div>
+        </section>
+
+        <!-- Sección de productos existentes -->
+        <section class="admin-section">
+            <h3>📋 Productos Registrados</h3>
+            <div class="search-container" style="margin-bottom: 20px;">
+                <input 
+                    type="text" 
+                    id="adminSearch" 
+                    class="search-input" 
+                    placeholder="Buscar producto..."
+                >
+            </div>
+            <div id="productsList" class="products-table-container">
+                <p>Cargando productos...</p>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script>
+    const addProductForm = document.getElementById('addProductForm');
+    const addMessage = document.getElementById('addMessage');
+    const productsList = document.getElementById('productsList');
+    const adminSearch = document.getElementById('adminSearch');
+    let allProducts = [];
+
+    // Cargar productos al abrir la página
+    loadProducts();
+
+    // Agregar nuevo producto
+    addProductForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const formData = {
+            barcode: document.getElementById('barcode').value.trim(),
+            name: document.getElementById('name').value.trim(),
+            price: document.getElementById('price').value
+        };
+
+        try {
+            const response = await fetch('/api/products', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            if (response.ok) {
+                showMessage('✓ Producto agregado exitosamente', 'success', addMessage);
+                addProductForm.reset();
+                document.getElementById('barcode').focus();
+                loadProducts();
+            } else if (response.status === 409) {
+                showMessage('✗ El código de barras ya existe', 'error', addMessage);
+            } else {
+                showMessage('✗ Error al agregar el producto', 'error', addMessage);
+            }
+        } catch (error) {
+            showMessage('✗ Error en la conexión', 'error', addMessage);
+        }
+    });
+
+    // Buscar productos
+    adminSearch.addEventListener('input', () => {
+        const query = adminSearch.value.toLowerCase();
+        const filtered = allProducts.filter(p => 
+            p.name.toLowerCase().includes(query) || 
+            p.barcode.includes(query)
+        );
+        displayProducts(filtered);
+    });
+
+    async function loadProducts() {
+        try {
+            const response = await fetch('/api/products');
+            if (response.ok) {
+                allProducts = await response.json();
+                displayProducts(allProducts);
+            }
+        } catch (error) {
+            productsList.innerHTML = '<p>Error al cargar productos</p>';
+        }
+    }
+
+    function displayProducts(products) {
+        if (products.length === 0) {
+            productsList.innerHTML = '<p>No hay productos registrados</p>';
+            return;
+        }
+
+        let html = '<table class="products-table"><thead><tr><th>Código</th><th>Nombre</th><th>Precio</th><th>Acciones</th></tr></thead><tbody>';
+        
+        products.forEach(product => {
+            html += `
+                <tr>
+                    <td>${escapeHtml(product.barcode)}</td>
+                    <td>${escapeHtml(product.name)}</td>
+                    <td>$${parseFloat(product.price).toFixed(2)}</td>
+                    <td>
+                        <button class="btn-small btn-edit" onclick="editProduct(${product.id}, '${escapeHtml(product.name)}', ${product.price})">✏️ Editar</button>
+                        <button class="btn-small btn-delete" onclick="deleteProduct(${product.id})">🗑️ Eliminar</button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += '</tbody></table>';
+        productsList.innerHTML = html;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function editProduct(id, name, price) {
+        // Mostrar modal de edición
+        const editModal = document.getElementById('editProductModal');
+        if (!editModal) return;
+        
+        document.getElementById('editProductId').value = id;
+        document.getElementById('editProductName').value = name;
+        document.getElementById('editProductPrice').value = price;
+        
+        editModal.style.display = 'flex';
+        document.getElementById('editProductName').focus();
+    }
+
+    function closeEditModal() {
+        const editModal = document.getElementById('editProductModal');
+        if (editModal) {
+            editModal.style.display = 'none';
+        }
+    }
+
+    function submitEditProduct() {
+        const id = document.getElementById('editProductId').value;
+        const newName = document.getElementById('editProductName').value.trim();
+        const newPrice = document.getElementById('editProductPrice').value;
+
+        if (!newName) {
+            alert('El nombre es requerido');
+            return;
+        }
+
+        fetch(`/api/products/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: newName,
+                price: newPrice,
+                category: ''
+            })
+        })
+        .then(response => {
+            if (response.ok) {
+                showMessage('✓ Producto actualizado', 'success', addMessage);
+                closeEditModal();
+                loadProducts();
+            } else {
+                showMessage('✗ Error al actualizar', 'error', addMessage);
+            }
+        })
+        .catch(error => {
+            showMessage('✗ Error en la conexión', 'error', addMessage);
+        });
+    }
+
+
+    function deleteProduct(id) {
+        if (!confirm('¿Estás seguro de que quieres eliminar este producto?')) return;
+
+        fetch(`/api/products/${id}`, {
+            method: 'DELETE'
+        })
+        .then(response => {
+            if (response.ok) {
+                showMessage('✓ Producto eliminado', 'success', addMessage);
+                loadProducts();
+            } else {
+                showMessage('✗ Error al eliminar', 'error', addMessage);
+            }
+        })
+        .catch(error => {
+            showMessage('✗ Error en la conexión', 'error', addMessage);
+        });
+    }
+
+    function showMessage(text, type, element) {
+        element.textContent = text;
+        element.className = `message ${type}`;
+        element.style.display = 'block';
+        setTimeout(() => {
+            element.style.display = 'none';
+        }, 4000);
+    }
+
+    // Configurar event listeners del modal de edición
+    document.addEventListener('DOMContentLoaded', function() {
+        const editModal = document.getElementById('editProductModal');
+        if (editModal) {
+            editModal.addEventListener('click', (e) => {
+                if (e.target.id === 'editProductModal') {
+                    closeEditModal();
+                }
+            });
+
+            // Permitir Enter para guardar
+            const editForm = document.querySelector('#editProductModal form');
+            if (editForm) {
+                editForm.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+                        submitEditProduct();
+                    }
+                });
+            }
+        }
+    });
+
+    // Cerrar modal si presiona Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.getElementById('editProductModal').style.display === 'flex') {
+            closeEditModal();
+        }
+    });
+</script>
+
+<!-- Modal para editar producto -->
+<div id="editProductModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3>✏️ Editar Producto</h3>
+            <button type="button" class="modal-close" onclick="closeEditModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form>
+                <input type="hidden" id="editProductId">
+                <div class="form-group">
+                    <label for="editProductName">Nombre del Producto:</label>
+                    <input type="text" id="editProductName" placeholder="Nombre del producto" required>
+                </div>
+                <div class="form-group">
+                    <label for="editProductPrice">Precio ($):</label>
+                    <input type="number" id="editProductPrice" placeholder="0.00" step="0.01" min="0" required>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancelar</button>
+            <button type="button" class="btn" onclick="submitEditProduct()">Guardar Cambios</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

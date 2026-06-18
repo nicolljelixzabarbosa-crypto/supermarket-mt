@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Login Admin - Supermarket MT{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <section class="login-section">
+        <div class="login-card">
+            <h2>🔐 Acceso de Administrador</h2>
+            <p class="login-subtitle">Ingresa tus credenciales para acceder al panel</p>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Usuario:</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        placeholder="Ingresa tu usuario"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Contraseña (PIN):</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        placeholder="Ingresa tu PIN"
+                        required
+                    >
+                </div>
+
+                <button type="submit" class="login-btn">Ingresar</button>
+            </form>
+
+            <div id="loginError" class="error-message" style="display: none;"></div>
+            <div id="loginSuccess" class="success-message" style="display: none;"></div>
+
+            <div class="login-info">
+                <p>⚠️ ¿Necesitas cambiar tu código?</p>
+                <button type="button" class="btn-change-password" onclick="openChangePasswordModal()">🔑 Cambiar Contraseña</button>
+            </div>
+
+            <a href="{{ url_for('index') }}" class="back-link">← Volver a Consultar Precios</a>
+        </div>
+    </section>
+</div>
+
+<script>
+    const loginForm = document.getElementById('loginForm');
+    const loginError = document.getElementById('loginError');
+    const loginSuccess = document.getElementById('loginSuccess');
+
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
+
+        loginError.style.display = 'none';
+        loginSuccess.style.display = 'none';
+
+        try {
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            });
+
+            if (response.ok) {
+                loginSuccess.textContent = '✓ Login exitoso. Redirigiendo...';
+                loginSuccess.style.display = 'block';
+                setTimeout(() => {
+                    window.location.href = '{{ url_for("admin") }}';
+                }, 1500);
+            } else {
+                loginError.textContent = '✗ Usuario o contraseña incorrecta';
+                loginError.style.display = 'block';
+                document.getElementById('password').value = '';
+                document.getElementById('password').focus();
+            }
+        } catch (error) {
+            loginError.textContent = '✗ Error en la conexión. Intenta de nuevo.';
+            loginError.style.display = 'block';
+        }
+    });
+
+    // Autofocus en el campo de usuario
+    document.getElementById('username').focus();
+
+    // Funciones para modal de cambiar contraseña
+    function openChangePasswordModal() {
+        const modal = document.getElementById('changePasswordModal');
+        const form = document.getElementById('changePasswordForm');
+        if (modal) {
+            modal.style.display = 'flex';
+            document.getElementById('changeUsername').focus();
+        }
+        if (form) {
+            form.reset();
+        }
+        const errorDiv = document.getElementById('changePasswordError');
+        const successDiv = document.getElementById('changePasswordSuccess');
+        if (errorDiv) errorDiv.style.display = 'none';
+        if (successDiv) successDiv.style.display = 'none';
+    }
+
+    function closeChangePasswordModal() {
+        const modal = document.getElementById('changePasswordModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    async function submitChangePassword() {
+        const username = document.getElementById('changeUsername').value.trim();
+        const oldPassword = document.getElementById('changeOldPassword').value;
+        const newPassword = document.getElementById('changeNewPassword').value;
+        const confirmPassword = document.getElementById('changeNewPasswordConfirm').value;
+        
+        const errorDiv = document.getElementById('changePasswordError');
+        const successDiv = document.getElementById('changePasswordSuccess');
+        
+        if (errorDiv) errorDiv.style.display = 'none';
+        if (successDiv) successDiv.style.display = 'none';
+
+        if (!username) {
+            if (errorDiv) {
+                errorDiv.textContent = '✗ Ingresa el usuario';
+                errorDiv.style.display = 'block';
+            }
+            return;
+        }
+
+        if (newPassword.length < 4) {
+            if (errorDiv) {
+                errorDiv.textContent = '✗ La contraseña debe tener mínimo 4 caracteres';
+                errorDiv.style.display = 'block';
+            }
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            if (errorDiv) {
+                errorDiv.textContent = '✗ Las contraseñas no coinciden';
+                errorDiv.style.display = 'block';
+            }
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/change-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username,
+                    old_password: oldPassword,
+                    new_password: newPassword
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                if (successDiv) {
+                    successDiv.textContent = '✓ ' + result.message;
+                    successDiv.style.display = 'block';
+                }
+                setTimeout(() => {
+                    closeChangePasswordModal();
+                }, 2000);
+            } else {
+                if (errorDiv) {
+                    errorDiv.textContent = '✗ ' + result.message;
+                    errorDiv.style.display = 'block';
+                }
+            }
+        } catch (error) {
+            if (errorDiv) {
+                errorDiv.textContent = '✗ Error en la solicitud';
+                errorDiv.style.display = 'block';
+            }
+        }
+    }
+
+    // Configurar event listeners después de que DOM esté listo
+    document.addEventListener('DOMContentLoaded', function() {
+        const changePasswordForm = document.getElementById('changePasswordForm');
+        const changePasswordModal = document.getElementById('changePasswordModal');
+        
+        if (changePasswordForm) {
+            changePasswordForm.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    submitChangePassword();
+                }
+            });
+        }
+        
+        if (changePasswordModal) {
+            changePasswordModal.addEventListener('click', (e) => {
+                if (e.target.id === 'changePasswordModal') {
+                    closeChangePasswordModal();
+                }
+            });
+        }
+    });
+</script>
+
+<!-- Modal para cambiar contraseña -->
+<div id="changePasswordModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h3>🔑 Cambiar Contraseña</h3>
+            <button type="button" class="modal-close" onclick="closeChangePasswordModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="changePasswordForm">
+                <div class="form-group">
+                    <label for="changeUsername">Usuario:</label>
+                    <input type="text" id="changeUsername" placeholder="admin" required>
+                </div>
+                <div class="form-group">
+                    <label for="changeOldPassword">Código Actual:</label>
+                    <input type="password" id="changeOldPassword" placeholder="Deja en blanco si es la primera vez" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="changeNewPassword">Nuevo Código (mín. 4 caracteres):</label>
+                    <input type="password" id="changeNewPassword" placeholder="Ingresa nuevo código" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="changeNewPasswordConfirm">Confirmar Nuevo Código:</label>
+                    <input type="password" id="changeNewPasswordConfirm" placeholder="Repite el código" required autocomplete="off">
+                </div>
+                <div id="changePasswordError" class="error-message" style="display: none; margin-bottom: 10px;"></div>
+                <div id="changePasswordSuccess" class="success-message" style="display: none; margin-bottom: 10px;"></div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeChangePasswordModal()">Cancelar</button>
+            <button type="button" class="btn" onclick="submitChangePassword()">Cambiar</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
